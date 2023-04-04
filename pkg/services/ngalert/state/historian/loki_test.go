@@ -3,6 +3,7 @@ package historian
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -138,6 +139,26 @@ func TestRemoteLokiBackend(t *testing.T) {
 			require.NotNil(t, entry.Values.Get("B"))
 			require.InDelta(t, 2.0, entry.Values.Get("A").MustFloat64(), 1e-4)
 			require.InDelta(t, 5.5, entry.Values.Get("B").MustFloat64(), 1e-4)
+		})
+
+		t.Run("stores fingerprint of instance labels", func(t *testing.T) {
+			rule := createTestRule()
+			l := log.NewNopLogger()
+			states := singleFromNormal(&state.State{
+				State: eval.Alerting,
+				Labels: data.Labels{
+					"statelabel": "labelvalue",
+					"labeltwo":   "labelvalue",
+					"labelthree": "labelvalue",
+				},
+			})
+
+			res := statesToStream(rule, states, nil, l)
+
+			entry := requireSingleEntry(t, res)
+			lblJsn, _ := json.Marshal(states[0].Labels)
+			exp := fmt.Sprintf("%x", md5.Sum(lblJsn))
+			require.Equal(t, exp, entry.InstanceID)
 		})
 	})
 
