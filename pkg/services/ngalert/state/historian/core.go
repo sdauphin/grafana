@@ -1,9 +1,11 @@
 package historian
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	prometheus "github.com/prometheus/common/model"
 
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/ngalert/eval"
@@ -37,6 +39,12 @@ func removePrivateLabels(labels data.Labels) data.Labels {
 		}
 	}
 	return result
+}
+
+// labelFingerprint calculates a stable Prometheus-style signature for a label set.
+func labelFingerprint(labels data.Labels) string {
+	sig := prometheus.LabelsToSignature(labels)
+	return fmt.Sprintf("%016x", uint64(sig))
 }
 
 // panelKey uniquely identifies a panel.
