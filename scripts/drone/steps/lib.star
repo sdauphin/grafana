@@ -24,6 +24,14 @@ trigger_oss = {
     ],
 }
 
+trigger_npm_publish = {
+    "paths": {
+        "include": [
+            "packages/**",
+        ],
+    },
+}
+
 def slack_step(channel, template, secret):
     return {
         "name": "slack",
@@ -1187,7 +1195,17 @@ def release_canary_npm_packages_step(trigger = None):
         ],
     }
     if trigger:
-        step = dict(step, when = trigger)
+        step = dict(
+            step,
+            when = dict(
+                trigger,
+                paths = {
+                    "include": [
+                        "packages/**",
+                    ],
+                },
+            ),
+        )
     return step
 
 def enterprise2_suffix(edition):
