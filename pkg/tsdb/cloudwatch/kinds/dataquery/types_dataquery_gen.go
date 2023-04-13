@@ -314,7 +314,6 @@ type CloudWatchLogsQueryQueryMode string
 // CloudWatchMetricsQuery defines model for CloudWatchMetricsQuery.
 type CloudWatchMetricsQuery struct {
 	AccountId *string `json:"accountId,omitempty"`
-	Alias     *string `json:"alias,omitempty"`
 
 	// For mixed data sources the selected datasource is on the query level.
 	// For non mixed scenarios this is undefined.

@@ -95,8 +95,8 @@ func TestMetricDataQueryBuilder(t *testing.T) {
 			assert.Equal(t, `SUM([a,b])`, *mdq.Expression)
 		})
 
-		t.Run("should set label when dynamic labels feature toggle is enabled", func(t *testing.T) {
-			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels))
+		t.Run("should set label", func(t *testing.T) {
+			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
 			query := getBaseQuery()
 			query.Label = "some label"
 
@@ -111,12 +111,8 @@ func TestMetricDataQueryBuilder(t *testing.T) {
 			feature *featuremgmt.FeatureManager
 			label   string
 		}{
-			"should not set label when dynamic labels feature toggle is disabled": {
-				feature: featuremgmt.WithFeatures(),
-				label:   "some label",
-			},
 			"should not set label for empty string query label": {
-				feature: featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels),
+				feature: featuremgmt.WithFeatures(),
 				label:   "",
 			},
 		}
@@ -135,7 +131,7 @@ func TestMetricDataQueryBuilder(t *testing.T) {
 		}
 
 		t.Run(`should not specify accountId when it is "all"`, func(t *testing.T) {
-			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels))
+			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
 			query := &models.CloudWatchQuery{
 				Namespace:  "AWS/EC2",
 				MetricName: "CPUUtilization",
@@ -153,7 +149,7 @@ func TestMetricDataQueryBuilder(t *testing.T) {
 		})
 
 		t.Run("should set accountId when it is specified", func(t *testing.T) {
-			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels))
+			executor := newExecutor(nil, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
 			query := &models.CloudWatchQuery{
 				Namespace:  "AWS/EC2",
 				MetricName: "CPUUtilization",

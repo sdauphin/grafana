@@ -34,7 +34,6 @@ export const defaultMetricStat: Partial<MetricStat> = {
 export type Dimensions = Record<string, (string | Array<string>)>;
 
 export interface CloudWatchMetricsQuery extends common.DataQuery, MetricStat {
-  alias?: string;
   /**
    * Math expression query
    */

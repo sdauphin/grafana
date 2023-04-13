@@ -76,7 +76,6 @@ func TestTimeSeriesQuery(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "a",
-						"alias": "NetworkOut",
 						"statistics": [
 						  "Maximum"
 						],
@@ -103,7 +102,6 @@ func TestTimeSeriesQuery(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "b",
-						"alias": "NetworkIn",
 						"statistics": [
 						"Maximum"
 						],
@@ -274,7 +272,6 @@ type queryParameters struct {
 	MetricEditorMode models.MetricEditorMode `json:"metricEditorMode"`
 	Dimensions       queryDimensions         `json:"dimensions"`
 	Expression       string                  `json:"expression"`
-	Alias            string                  `json:"alias"`
 	Label            *string                 `json:"label"`
 	Statistic        string                  `json:"statistic"`
 	Period           string                  `json:"period"`
@@ -299,7 +296,6 @@ func newTestQuery(t testing.TB, p queryParameters) json.RawMessage {
 		Expression string  `json:"expression"`
 		Region     string  `json:"region"`
 		ID         string  `json:"id"`
-		Alias      string  `json:"alias"`
 		Label      *string `json:"label"`
 		Statistic  string  `json:"statistic"`
 		Period     string  `json:"period"`
@@ -316,7 +312,6 @@ func newTestQuery(t testing.TB, p queryParameters) json.RawMessage {
 		MetricEditorMode: p.MetricEditorMode,
 		Dimensions:       p.Dimensions,
 		Expression:       p.Expression,
-		Alias:            p.Alias,
 		Label:            p.Label,
 		Statistic:        p.Statistic,
 		Period:           p.Period,
@@ -345,10 +340,10 @@ func Test_QueryData_timeSeriesQuery_GetMetricDataWithContext(t *testing.T) {
 		return DataSource{Settings: models.CloudWatchSettings{}}, nil
 	})
 
-	t.Run("passes query label as GetMetricData label when dynamic labels feature toggle is enabled", func(t *testing.T) {
+	t.Run("passes query label as GetMetricData label", func(t *testing.T) {
 		api = mocks.MetricsAPI{}
 		api.On("GetMetricDataWithContext", mock.Anything, mock.Anything, mock.Anything).Return(&cloudwatch.GetMetricDataOutput{}, nil)
-		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels))
+		executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
 		query := newTestQuery(t, queryParameters{
 			Label: aws.String("${PROP('Period')} some words ${PROP('Dim.InstanceId')}"),
 		})
@@ -380,16 +375,12 @@ func Test_QueryData_timeSeriesQuery_GetMetricDataWithContext(t *testing.T) {
 		feature    *featuremgmt.FeatureManager
 		parameters queryParameters
 	}{
-		"should not pass GetMetricData label when query label is empty, dynamic labels is enabled": {
-			feature: featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels),
+		"should not pass GetMetricData label when query label is empty": {
+			feature: featuremgmt.WithFeatures(),
 		},
-		"should not pass GetMetricData label when query label is empty string, dynamic labels is enabled": {
-			feature:    featuremgmt.WithFeatures(featuremgmt.FlagCloudWatchDynamicLabels),
-			parameters: queryParameters{Label: aws.String("")},
-		},
-		"should not pass GetMetricData label when dynamic labels is disabled": {
+		"should not pass GetMetricData label when query label is empty string": {
 			feature:    featuremgmt.WithFeatures(),
-			parameters: queryParameters{Label: aws.String("${PROP('Period')} some words ${PROP('Dim.InstanceId')}")},
+			parameters: queryParameters{Label: aws.String("")},
 		},
 	}
 
@@ -424,7 +415,7 @@ func Test_QueryData_timeSeriesQuery_GetMetricDataWithContext(t *testing.T) {
 	}
 }
 
-func Test_QueryData_response_data_frame_names(t *testing.T) {
+func Test_QueryData_response_data_frame_name_is_always_response_label(t *testing.T) {
 	origNewCWClient := NewCWClient
 	t.Cleanup(func() {
 		NewCWClient = origNewCWClient
@@ -448,11 +439,10 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 	})
 	executor := newExecutor(im, newTestConfig(), &fakeSessionCache{}, featuremgmt.WithFeatures())
 
-	t.Run("where user defines search expression and alias is defined, then frame name prioritizes period and stat from expression over input", func(t *testing.T) {
+	t.Run("where user defines search expression and alias is defined", func(t *testing.T) {
 		query := newTestQuery(t, queryParameters{
-			MetricQueryType:  models.MetricQueryTypeSearch, // contributes to isUserDefinedSearchExpression = true
-			MetricEditorMode: models.MetricEditorModeRaw,   // contributes to isUserDefinedSearchExpression = true
-			Alias:            "{{period}} {{stat}}",
+			MetricQueryType:  models.MetricQueryTypeSearch,                                                 // contributes to isUserDefinedSearchExpression = true
+			MetricEditorMode: models.MetricEditorModeRaw,                                                   // contributes to isUserDefinedSearchExpression = true
 			Expression:       `SEARCH('{AWS/EC2,InstanceId} MetricName="CPUUtilization"', 'Average', 300)`, // period 300 and stat 'Average' parsed from this expression
 			Statistic:        "Maximum",                                                                    // stat parsed from expression takes precedence over 'Maximum'
 			Period:           "1200",                                                                       // period parsed from expression takes precedence over 1200
@@ -470,10 +460,10 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Equal(t, "300 Average", resp.Responses["A"].Frames[0].Name)
+		assert.Equal(t, labelFromGetMetricData, resp.Responses["A"].Frames[0].Name)
 	})
 
-	t.Run("where no alias is provided and query is math expression, then frame name is queryId", func(t *testing.T) {
+	t.Run("where no alias is provided and query is math expression", func(t *testing.T) {
 		query := newTestQuery(t, queryParameters{
 			MetricQueryType:  models.MetricQueryTypeSearch,
 			MetricEditorMode: models.MetricEditorModeRaw,
@@ -491,10 +481,10 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 		})
 
 		assert.NoError(t, err)
-		assert.Equal(t, queryId, resp.Responses["A"].Frames[0].Name)
+		assert.Equal(t, labelFromGetMetricData, resp.Responses["A"].Frames[0].Name)
 	})
 
-	t.Run("where no alias provided and query type is MetricQueryTypeQuery, then frame name is label", func(t *testing.T) {
+	t.Run("where no alias provided and query type is MetricQueryTypeQuery", func(t *testing.T) {
 		query := newTestQuery(t, queryParameters{
 			MetricQueryType: models.MetricQueryTypeQuery,
 		})
@@ -514,7 +504,7 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 		assert.Equal(t, labelFromGetMetricData, resp.Responses["A"].Frames[0].Name)
 	})
 
-	// where query is inferred search expression and not multivalued dimension expression, then frame name is label
+	// where query is inferred search expression and not multivalued dimension expression
 	testCasesReturningLabel := map[string]queryParameters{
 		"with specific dimensions, matchExact false": {Dimensions: queryDimensions{[]string{"some-instance"}}, MatchExact: false},
 		"with wildcard dimensions, matchExact false": {Dimensions: queryDimensions{[]string{"*"}}, MatchExact: false},
@@ -541,7 +531,7 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 		})
 	}
 
-	// complementary test cases to above return default of "metricName_stat"
+	// complementary test cases to above
 	testCasesReturningMetricStat := map[string]queryParameters{
 		"with specific dimensions, matchExact true": {
 			Dimensions: queryDimensions{[]string{"some-instance"}},
@@ -584,7 +574,7 @@ func Test_QueryData_response_data_frame_names(t *testing.T) {
 			})
 
 			assert.NoError(t, err)
-			assert.Equal(t, "CPUUtilization_Maximum", resp.Responses["A"].Frames[0].Name)
+			assert.Equal(t, labelFromGetMetricData, resp.Responses["A"].Frames[0].Name)
 		})
 	}
 }
@@ -626,7 +616,6 @@ func TestTimeSeriesQuery_CrossAccountQuerying(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "a",
-						"alias": "NetworkOut",
 						"statistic": "Maximum",
 						"period": "300",
 						"hide": false,
@@ -667,7 +656,6 @@ func TestTimeSeriesQuery_CrossAccountQuerying(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "a",
-						"alias": "NetworkOut",
 						"statistic": "Maximum",
 						"period": "300",
 						"hide": false,
@@ -709,7 +697,6 @@ func TestTimeSeriesQuery_CrossAccountQuerying(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "a",
-						"alias": "NetworkOut",
 						"statistic": "Maximum",
 						"period": "300",
 						"hide": false,
@@ -751,7 +738,6 @@ func TestTimeSeriesQuery_CrossAccountQuerying(t *testing.T) {
 						},
 						"region": "us-east-2",
 						"id": "a",
-						"alias": "NetworkOut",
 						"statistic": "Maximum",
 						"period": "300",
 						"hide": false,

@@ -53,7 +53,6 @@ composableKinds: DataQuery: {
 							metricEditorMode?: #MetricEditorMode
 							// common props
 							id:     string
-							alias?: string
 							label?: string
 							// Math expression query
 							expression?:    string
