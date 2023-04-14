@@ -88,11 +88,16 @@ func SetupTestSecureSocksProxySettings(t *testing.T) *setting.SecureSocksDSProxy
 	})
 	require.NoError(t, err)
 
-	return &setting.SecureSocksDSProxySettings{
+	settings := setting.SecureSocksDSProxySettings{
 		ClientCert:   clientCert,
 		ClientKey:    clientKey,
 		RootCA:       rootCACert,
 		ServerName:   serverName,
 		ProxyAddress: proxyAddress,
 	}
+
+	err = setting.SetProxyEnvVariables(settings)
+	require.NoError(t, err)
+
+	return &settings
 }

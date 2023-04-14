@@ -19,6 +19,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	sdkproxy "github.com/grafana/grafana-plugin-sdk-go/backend/proxy"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"github.com/grafana/grafana/pkg/infra/httpclient"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -274,7 +275,7 @@ func (e *cloudWatchExecutor) newSession(pluginCtx backend.PluginContext, region 
 	}
 
 	// work around until https://github.com/grafana/grafana/issues/39089 is implemented
-	if e.cfg.SecureSocksDSProxy.Enabled && e.features.IsEnabled(featuremgmt.FlagSecureSocksDatasourceProxy) && instance.Settings.SecureSocksProxyEnabled {
+	if sdkproxy.SecureSocksProxyEnabled(&sdkproxy.Options{Enabled: instance.Settings.SecureSocksProxyEnabled}) {
 		// only update the transport to try to avoid the issue mentioned here https://github.com/grafana/grafana/issues/46365
 		sess.Config.HTTPClient.Transport = instance.HTTPClient.Transport
 	}

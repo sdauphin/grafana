@@ -117,6 +117,7 @@ export function registerAngularDirectives() {
     'showAccessOptions',
     'dataSourceConfig',
     'showForwardOAuthIdentityOption',
+    'secureSocksDSProxyEnabled',
     ['onChange', { watchDepth: 'reference', wrapApply: true }],
   ]);
   react2AngularDirective('folderPicker', FolderPicker, [
