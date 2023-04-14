@@ -34,7 +34,7 @@ import { MIXED_DATASOURCE_NAME } from 'app/plugins/datasource/mixed/MixedDataSou
 import { getNodeGraphDataFrames } from 'app/plugins/panel/nodeGraph/utils';
 import { StoreState } from 'app/types';
 import { AbsoluteTimeEvent } from 'app/types/events';
-import { ExploreId, ExploreItemState } from 'app/types/explore';
+import { ExploreId } from 'app/types/explore';
 
 import { getTimeZone } from '../profile/state/selectors';
 
@@ -533,7 +533,11 @@ export class Explore extends React.PureComponent<Props, ExploreState> {
 function mapStateToProps(state: StoreState, { exploreId }: ExploreProps) {
   const explore = state.explore;
   const { syncedTimes } = explore;
-  const item: ExploreItemState = explore.panes[exploreId]!;
+  const item = explore.panes[exploreId];
+  if (!item) {
+    return null;
+  }
+
   const timeZone = getTimeZone(state.user);
   const {
     datasourceInstance,

@@ -60,7 +60,7 @@ export function useStateSync(params: ExploreQueryParams) {
         const paneDatasource =
           exploreMixedDatasource && datasource === MIXED_DATASOURCE_NAME
             ? MIXED_DATASOURCE_NAME
-            : queries[0]?.datasource || store.get(lastUsedDatasourceKeyForOrgId(orgId));
+            : datasource || queries[0]?.datasource || store.get(lastUsedDatasourceKeyForOrgId(orgId));
 
         // if there are no queries, we get a default query from the datasource.
         // if the datasource is mixed, we get the last used datasource from the store.
@@ -121,6 +121,7 @@ export function useStateSync(params: ExploreQueryParams) {
           // In this case we want to initialize the pane with the data from the URL
           // if it's not present in the store. This may happen if the user has navigated
           // from split view to non-split view and then back to split view.
+          console.log('pane not in store, initializing', exploreId, urlPane);
           dispatch(
             initializeExplore({
               exploreId,
